@@ -35,6 +35,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.block.data.Directional;
 import org.bukkit.scheduler.BukkitScheduler;
+import java.util.Iterator;
 
 public class UpgradesListener implements Listener {
 
@@ -100,15 +101,11 @@ public class UpgradesListener implements Listener {
         }
     }
 
-    
-    
     Plugin plugin = FactionsPlugin.getPlugin(FactionsPlugin.class);
     BukkitScheduler scheduler = Bukkit.getScheduler();
+
     @EventHandler
     public void onCropGrow(BlockGrowEvent e) {
-    	Logger.print("BlockGrowEvent detected, 'Crops' fUpgrade activation procedure has begun");
-    	Logger.print("Block" + e.getBlock().getType() + "detected in onCropGrow(): Old Type");
-    	Logger.print("Block" + e.getNewState().getType() + "detected in onCropGrow(): New Type");
         FLocation floc = FLocation.wrap(e.getBlock().getLocation());
         Faction factionAtLoc = Board.getInstance().getFactionAt(floc);
         if (!factionAtLoc.isWilderness()) {
@@ -118,220 +115,110 @@ public class UpgradesListener implements Listener {
             	return;
             }
             int randomNum = ThreadLocalRandom.current().nextInt(0, 100);
-            if (randomNum <= chance) {
-            	Logger.print("'Crops' fUpgrade, 'growCrop()', activated: 'randomNum' is less than or equal to 'chance'");
+            if (randomNum <= chance) { 	
             	this.growCrop(e);
-            }}}
+            }
+          }
+        }
     
-    Set<Material> manualCrops;
-    Set<Material> autoCrops;
-    Set<Material> autoAgeableCrops;
-    Set<Material> fruitCrops;
     BlockGrowEvent cropGrowEvent;
+    Set<BlockFace> blockFaces = EnumSet.of(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST);
+    Set<Material> manualCrops = EnumSet.of(Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.NETHER_WART, Material.COCOA);;
+    Set<Material> autoCrops = EnumSet.of(Material.CACTUS, Material.SUGAR_CANE, Material.MELON, Material.PUMPKIN);;
+    Set<Material> autoAgeableCrops = EnumSet.of(Material.SUGAR_CANE, Material.CACTUS);
+    Set<Material> fruitCrops = EnumSet.of(Material.PUMPKIN, Material.MELON);
     Block blockCrop;
     Material typeCropNew;
     BlockData dataCropNew;
+    Location locationCrop;
+    
     private void growCrop(BlockGrowEvent e) {
-    	Logger.print("Block" + e.getBlock().getType() + "detected in growCrop(): Old Type");
-    	Logger.print("Block" + e.getNewState().getType() + "detected in growCrop(): New Type");
-    	Logger.print("'growCrop()' has begun");
-    	Logger.print("'0' Ticks have passed");
-    	this.manualCrops = EnumSet.of(Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.NETHER_WART, Material.COCOA);
-    	this.autoCrops = EnumSet.of(Material.CACTUS, Material.SUGAR_CANE, Material.MELON, Material.PUMPKIN);
-    	this.autoAgeableCrops = EnumSet.of(Material.SUGAR_CANE, Material.CACTUS);
-    	this.fruitCrops = EnumSet.of(Material.PUMPKIN, Material.MELON);
     	this.cropGrowEvent = e;
     	this.blockCrop = cropGrowEvent.getNewState().getBlock();
     	this.typeCropNew= cropGrowEvent.getNewState().getType();
     	this.dataCropNew= cropGrowEvent.getNewState().getBlockData();
+    	this.locationCrop = cropGrowEvent.getNewState().getBlock().getLocation();
     	if ((!manualCrops.contains(typeCropNew)) && (!autoCrops.contains(typeCropNew))) { 
     		return;
-    		
     		}else if (manualCrops.contains(typeCropNew)) {
-    			Logger.print("Manual Crop Detected: 'growManual()', has been activated");	
     			growManual(cropGrowEvent);
-    		
-    		}else if (autoCrops.contains(typeCropNew)) {
-    			if (fruitCrops.contains(typeCropNew)) {
-    				Logger.print("Fruit Detected: 'growFruit()', has been activated");
-    				growFruit(cropGrowEvent);
-    			}else if (autoAgeableCrops.contains(typeCropNew)) {
-    				growAutoAgeable(cropGrowEvent);
-    				Logger.print("autoAgeableCrop Detected: 'growAutoAgeable()', has been activated");
-    				   				
-    		}}else {Logger.print("Unknown Crop Detected: Fix");}
-    		}	
-    Material typeAutoAgeable;		
+    		}else if (fruitCrops.contains(typeCropNew)) {
+				growFruit(cropGrowEvent);
+    		}else if (autoAgeableCrops.contains(typeCropNew)) {
+    			growAutoAgeable(cropGrowEvent);
+    		}
+    }
+    					
     Block blockAutoAgeable;
+    
     private void growAutoAgeable(BlockGrowEvent cropGrowEvent) {
-    	if (!autoAgeableCrops.contains(typeCropNew)){
-    		Logger.print("autoAgeableCrop has been detected, but not actually: Fix");
-    		return;
-    		
-    	} else {
-    		this.blockAutoAgeable = blockCrop;
-    		this.typeAutoAgeable = typeCropNew;
     		Block above =  blockCrop.getLocation().add(0.0, 1.0, 0.0).getBlock();
     		Material aboveType = above.getType();
-    		Material below2Type =blockAutoAgeable.getLocation().add(0.0, -2.0, 0.0).getBlock().getType();
-    		if (typeAutoAgeable == Material.SUGAR_CANE) {
-    			if ((aboveType == Material.AIR) && (below2Type != Material.SUGAR_CANE)) {
-    				Logger.print("AIR has been detected ABOVE for _" + typeAutoAgeable);	
+    		Material below2Type =blockCrop.getLocation().add(0.0, -2.0, 0.0).getBlock().getType();
+    		if (typeCropNew == Material.SUGAR_CANE) {
+    			if ((aboveType == Material.AIR) && (below2Type != Material.SUGAR_CANE)) {	
     				above.setType(Material.SUGAR_CANE);
-    			}else {
-    				Logger.print( typeAutoAgeable + "does NOT have AIR ABOVE to grow into");
-    				return;
     			}
-    		
-    	}else if (typeAutoAgeable == Material.CACTUS) {
-    		 if (checkForNeighbors() == true) {
-    			Block blockCactus = blockCrop;
-    			Location cactusLocation = blockCrop.getLocation();
-    			Material typeCactus = cactusLocation.getBlock().getType();
-    			if (typeCactus == Material.AIR) {
-    				blockCactus.setType(Material.CACTUS);
-    				blockCactus.breakNaturally();
-    			}
+    		}else if (typeCropNew == Material.CACTUS) {
+    		 if (getNeighbors() == true) {
+    				blockCrop.setType(Material.CACTUS);
+    				blockCrop.breakNaturally();
        		}else if((aboveType == Material.AIR) && (below2Type != Material.CACTUS)) {
        			above.setType(Material.CACTUS);
-       		} 
-    	}}	    				
-    		}   	    				
-    		    			
-    private boolean checkForNeighbors() {
-    	if (blockAutoAgeable.getRelative(BlockFace.NORTH).getType() != Material.AIR) {  
-    		Logger.print("Neighbor has been detected NORTH for _" + typeAutoAgeable);
-    	return true;
-    	}else if (blockAutoAgeable.getRelative(BlockFace.SOUTH).getType() != Material.AIR) {  
-    		Logger.print("Neighbor has been detected SOUTH for _" + typeAutoAgeable );
-        	return true;
-    	}else if (blockAutoAgeable.getRelative(BlockFace.EAST).getType() != Material.AIR) { 
-    		Logger.print("Neighbor has been detected EAST for _" + typeAutoAgeable );
-        	return true;
-    	}else if (blockAutoAgeable.getRelative(BlockFace.WEST).getType() != Material.AIR) {
-    		Logger.print("Neighbor has been detected WEST for _" + typeAutoAgeable );
-        	return true;
-    	}else {
-    		Logger.print("Neighbor for _" + typeAutoAgeable + "NOT DETECTED" );
-    		return false;
+       		}
     	}
     }
-    
-    private void growManual(BlockGrowEvent cropGrowEvent) {
-    	Logger.print("'growManual()' has begun");
-    	if (!manualCrops.contains(typeCropNew)){
-    		Logger.print("Manual crop has been detected, but not actually: fix");
-    		return;
-    	} else {
-    	cropGrowEvent.setCancelled(true);
-    	Logger.print("cropGrowEvent" + "is cancelled_" + cropGrowEvent.isCancelled());	
-    	BlockData dataManualCrop = dataCropNew;
-    	Material typeManualCrop = typeCropNew;
-    	Block blockManualCrop = blockCrop;
-    	 int ageManualCrop =((Ageable) dataManualCrop).getAge();
-    	 Logger.print(typeManualCrop + "'s Old Age is_" + ((Ageable)cropGrowEvent.getBlock().getBlockData()).getAge());
-    	 int maxAgeManualCrop =((Ageable) dataManualCrop).getMaximumAge();
-    	 int newAge =Math.min(ageManualCrop + 1, maxAgeManualCrop);
-    	 if ((ageManualCrop + 1) > maxAgeManualCrop) {
-    	Logger.print(typeCropNew + "'s possible NewAge" + (ageManualCrop + 1 )+ "is greater than max age_" + maxAgeManualCrop + "so its actual newAge is_" + newAge);
-    	 }
-    	 ((Ageable)dataManualCrop).setAge(newAge);
-    	 Logger.print("New Age_" + newAge + "_has been set for_" + typeManualCrop);
-    	 blockManualCrop.setBlockData((BlockData)(Ageable)dataManualCrop);
-    	 Logger.print("New Age_" + newAge + "_has been applied to_" + typeManualCrop);
-    	 Logger.print("If BlockGrowEvent was not cancelled_" + typeManualCrop + "'s Age would now have been_" + ageManualCrop );
-    	 
-    	}
-    }
+      		    		
+private boolean getNeighbors() {
+	for (BlockFace blockface : blockFaces)
+			if (blockCrop.getRelative(blockface).getType() != Material.AIR) {
+				Logger.print("Neighbor found" + blockface);
+				return true;	
+			} return false; 		
+	}
 
-    private Set<Material> fruitSpawnable;
-    private Block blockFruit;
-    private Material fruit;
+    private void growManual(BlockGrowEvent cropGrowEvent) {
+    	cropGrowEvent.setCancelled(true);
+    	 int age =((Ageable) dataCropNew).getAge();
+    	 int maxAge =((Ageable) dataCropNew).getMaximumAge();
+    	 int newAge =Math.min(age + 1, maxAge);
+    	 ((Ageable)dataCropNew).setAge(newAge);
+    	 blockCrop.setBlockData((BlockData)(Ageable)dataCropNew);   	 
+    	}
+    
+    private Set<Material> fruitSpawnable = EnumSet.of(Material.DIRT, Material.GRASS_BLOCK, Material.PODZOL, Material.COARSE_DIRT, Material.MYCELIUM, Material.ROOTED_DIRT, Material.MOSS_BLOCK, Material.FARMLAND);
     private Material typeAttachedStem;
     
     private void growFruit(BlockGrowEvent cropGrowEvent) {
-    	Material typeFruit = typeCropNew;
-    	if (!fruitCrops.contains(typeFruit)) {
-    		Logger.print("Fruit has been detected, but not actually: fix");
-    		return;
-    	} else {
     	scheduler.runTask(plugin, () -> {
-    	Logger.print("1 Tick have passed");
-    	Logger.print("Block" + cropGrowEvent.getBlock().getType() + "detected in growFruit()");
-    	Logger.print("growFruit() has begun");	 		
-    		this.fruitSpawnable = EnumSet.of(Material.DIRT, Material.GRASS_BLOCK, Material.PODZOL, Material.COARSE_DIRT, Material.MYCELIUM, Material.ROOTED_DIRT, Material.MOSS_BLOCK, Material.FARMLAND);
-    		if (blockCrop == null) {
-    			return;
-    		}
-    		this.blockFruit = blockCrop;
-    		 if (typeFruit == Material.PUMPKIN) {
-        		this.fruit = Material.PUMPKIN;
-        		this.typeAttachedStem = Material.ATTACHED_PUMPKIN_STEM;
-        		Logger.print("Pumpkin has been detected");
-        		growExtraFruit();
-        		
-        	} else if (typeFruit == Material.MELON) {
-        		this.fruit = Material.MELON;
-        		this.typeAttachedStem = Material.ATTACHED_MELON_STEM;
-        		Logger.print("Melon has been detected");
-        		growExtraFruit();
-        	
-        	}});
-    	
-    	}	
-    }
+    		 if (typeCropNew == Material.PUMPKIN) {
+        		this.typeAttachedStem = Material.ATTACHED_PUMPKIN_STEM;      		
+        	} else if (typeCropNew == Material.MELON) {
+        		this.typeAttachedStem = Material.ATTACHED_MELON_STEM;	
+        	} growExtraFruit();
+    	});
+      }	
+    
     Block blockStemAttached;
     
-    private  Block getAttachedStem() {
-    	if ((typeAttachedStem == blockFruit.getRelative(BlockFace.NORTH).getType()) 
-				&& ((((Directional) (blockFruit.getRelative(BlockFace.NORTH)).getBlockData()).getFacing() == BlockFace.NORTH.getOppositeFace()))) {
-    				this.blockStemAttached = blockFruit.getRelative(BlockFace.NORTH);
-    				Logger.print("Attached Stem Found NORTH");
-    		
-    	}else if ((typeAttachedStem == blockFruit.getRelative(BlockFace.SOUTH).getType()) 
-				&& ((((Directional) (blockFruit.getRelative(BlockFace.SOUTH)).getBlockData()).getFacing() == BlockFace.SOUTH.getOppositeFace()))){
-					this.blockStemAttached = blockFruit.getRelative(BlockFace.SOUTH);
-					Logger.print("Attached Stem Found SOUTH");
-					
-    	}else if ((typeAttachedStem == blockFruit.getRelative(BlockFace.EAST).getType()) 
-				&& ((((Directional) (blockFruit.getRelative(BlockFace.EAST)).getBlockData()).getFacing() == BlockFace.EAST.getOppositeFace()))){
-					this.blockStemAttached = blockFruit.getRelative(BlockFace.EAST);
-					Logger.print("Attached Stem Found EAST");
-				
-    	}else if ((typeAttachedStem == blockFruit.getRelative(BlockFace.WEST).getType()) 
-				&& ((((Directional) (blockFruit.getRelative(BlockFace.WEST)).getBlockData()).getFacing() == BlockFace.WEST.getOppositeFace()))){
-					this.blockStemAttached = blockFruit.getRelative(BlockFace.WEST);
-					Logger.print("Attached Stem Found WEST");
-				
-    	}else {Logger.print("Attached Stem Not Found");
-               
-    	}return blockStemAttached;
-    }
-    
+    private Block getAttachedStem() {
+    	for (BlockFace blockface : blockFaces)
+    			if ((typeAttachedStem == blockCrop.getRelative(blockface).getType()) 
+    					&& ((((Directional) (blockCrop.getRelative(blockface)).getBlockData()).getFacing() == blockface.getOppositeFace()))) {
+    					this.blockStemAttached = blockCrop.getRelative(blockface);		
+    			} return blockStemAttached; 		
+    	}
+
     private void growExtraFruit() {
-    	Block blockStemAttached = getAttachedStem();
-		if (fruitSpawnable.contains(blockStemAttached.getRelative(BlockFace.NORTH).getLocation().add(0.0, -1.0, 0.0).getBlock().getType())
-    			&& ((blockStemAttached.getRelative(BlockFace.NORTH).getType()) == (Material.AIR))){ 
-					blockStemAttached.getRelative(BlockFace.NORTH).setType(fruit);
-					Logger.print("ExtraFruit" + fruit + " grown NORTH of attached stem");
-					
-				} else if (fruitSpawnable.contains(blockStemAttached.getRelative(BlockFace.SOUTH).getLocation().add(0.0, -1.0, 0.0).getBlock().getType())
-		    			&& ((blockStemAttached.getRelative(BlockFace.SOUTH).getType()) == (Material.AIR))){
-							blockStemAttached.getRelative(BlockFace.SOUTH).setType(fruit);
-							Logger.print("ExtraFruit" + fruit + " grown SOUTH of attached stem");
-							
-				} else if (fruitSpawnable.contains(blockStemAttached.getRelative(BlockFace.EAST).getLocation().add(0.0, -1.0, 0.0).getBlock().getType())
-		    			&& ((blockStemAttached.getRelative(BlockFace.EAST).getType()) == (Material.AIR))){ 
-							blockStemAttached.getRelative(BlockFace.EAST).setType(fruit);
-							Logger.print("ExtraFruit" + fruit + " grown EAST of attached stem");
-							
-				} else if (fruitSpawnable.contains(blockStemAttached.getRelative(BlockFace.WEST).getLocation().add(0.0, -1.0, 0.0).getBlock().getType())
-		    			&& ((blockStemAttached.getRelative(BlockFace.WEST).getType()) == (Material.AIR))){ 
-							blockStemAttached.getRelative(BlockFace.WEST).setType(fruit);
-							Logger.print("ExtraFruit" + fruit + " grown WEST of attached stem");		
-				}	   	
-	}  
-    
+    	Block blockAttachedStem = getAttachedStem();
+    	for (BlockFace blockface : blockFaces)
+    			if (fruitSpawnable.contains(blockAttachedStem.getRelative(blockface).getLocation().add(0.0, -1.0, 0.0).getBlock().getType())
+    	    			&& ((blockAttachedStem.getRelative(blockface).getType()) == (Material.AIR))) {
+    					blockAttachedStem.getRelative(blockface).setType(typeCropNew);
+    					return;
+    			} 		
+    	}
+      
     @EventHandler
     public void onWaterRedstone(BlockFromToEvent e) {
         FLocation floc = FLocation.wrap(e.getToBlock().getLocation());
