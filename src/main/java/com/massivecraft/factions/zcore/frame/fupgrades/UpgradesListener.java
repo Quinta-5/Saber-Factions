@@ -104,6 +104,89 @@ public class UpgradesListener implements Listener {
     Plugin plugin = FactionsPlugin.getPlugin(FactionsPlugin.class);
     BukkitScheduler scheduler = Bukkit.getScheduler();
 
+Set<Material> shrooms = EnumSet.of(Material.RED_MUSHROOM, Material.BROWN_MUSHROOM);
+
+    @EventHandler
+    public void onBlockSpread(BlockSpreadEvent e) {
+        FLocation floc = FLocation.wrap(e.getBlock().getLocation());
+        Faction factionAtLoc = Board.getInstance().getFactionAt(floc);
+        if (!factionAtLoc.isWilderness()) {
+            int level = factionAtLoc.getUpgrade("Crops");
+            int chance = FactionsPlugin.getInstance().getFileManager().getUpgrades().getConfig().getInt("fupgrades.MainMenu.Crops.Crop-Boost.level-" + level);
+            if (level == 0 || chance == 0) {
+                return;
+            }
+            int randomNum = ThreadLocalRandom.current().nextInt(0, 100);
+            if (randomNum <= chance) {
+                this.spreadShroom(e);
+            }
+        }
+    }
+	
+    Block source;
+    Material typeShroom;
+	
+    private void spreadShroom(BlockSpreadEvent e){
+    	Logger.print("spreadShroom check 1");
+    	this.source= e.getSource();
+    	Location location = e.getBlock().getLocation();   	
+    	scheduler.runTask(plugin, () -> {
+    		Location sourceLocation =e.getSource().getLocation();
+    		this.typeShroom = location.getBlock().getType();
+    		if (shrooms.contains(typeShroom)== true) {
+    			if (belowMaxDensity(location) == true) {
+    				Location shroomSpace = getSpaceForShroom(sourceLocation);
+    				shroomSpace.getBlock().setType(typeShroom);
+    			}
+    		}
+    	});
+    }
+	
+        private boolean belowMaxDensity(Location location) {
+            int i =5;       
+            	for (int x = 4; x >= -4; x--) {
+            		for (int y = 1; y >= -1; y--) {
+            			for (int z = 4; z >= -4; z--) { 			
+            				if (shrooms.contains(location.getBlock().getRelative(x, y, z).getType()) ) {
+            					i--;
+            					if (i<=0) {
+            						return false;
+            				}
+                        }
+                    }
+                }
+            }return true;	
+        }
+
+    Set<Material> mushroomGrowBlock = EnumSet.of(Material.MYCELIUM, Material.PODZOL, Material.CRIMSON_NYLIUM, Material.WARPED_NYLIUM);
+	
+    private boolean canSurvive(Block e){
+    	Material below = e.getLocation().add(0.0, -1.0, 0.0).getBlock().getType();
+    	Material origin= e.getType();
+    	byte lightLevel =e.getLightLevel();
+    	if (origin == Material.AIR) {	
+    		if(mushroomGrowBlock.contains(below))  {
+    		return true;
+    	}else if ((lightLevel < 13)  && (below.isSolid() == true)){
+    		return true;
+    	}
+      }return false;
+    }
+
+    Location spaceForShroom;
+	
+    private Location getSpaceForShroom(Location location) {
+    	for (int x = 1; x >= -1; x--) {
+    		for (int y = 1; y >= -1; y--) {
+    			for (int z = 1; z >= -1; z--) { 
+    				if (canSurvive(location.getBlock().getRelative(x, y, z)) == true) {
+    					this.spaceForShroom = location.getBlock().getRelative(x, y, z).getLocation();
+    				}
+    			}
+    		}
+    	}return spaceForShroom;
+    }	
+	
     @EventHandler
     public void onCropGrow(BlockGrowEvent e) {
         FLocation floc = FLocation.wrap(e.getBlock().getLocation());
@@ -172,7 +255,6 @@ public class UpgradesListener implements Listener {
 private boolean getNeighbors() {
 	for (BlockFace blockface : blockFaces)
 			if (blockCrop.getRelative(blockface).getType() != Material.AIR) {
-				Logger.print("Neighbor found" + blockface);
 				return true;	
 			} return false; 		
 	}
