@@ -96,40 +96,6 @@ public class UpgradesListener implements Listener {
     }
 
     @EventHandler
-    public void onCropGrow(BlockGrowEvent e) {
-        FLocation floc = FLocation.wrap(e.getBlock().getLocation());
-        Faction factionAtLoc = Board.getInstance().getFactionAt(floc);
-        if (!factionAtLoc.isWilderness()) {
-            int level = factionAtLoc.getUpgrade("Crops");
-            int chance = FactionsPlugin.getInstance().getFileManager().getUpgrades().getConfig().getInt("fupgrades.MainMenu.Crops.Crop-Boost.level-" + level);
-            if (level == 0 || chance == 0) return;
-
-            int randomNum = ThreadLocalRandom.current().nextInt(1, 101);
-            if (randomNum <= chance) this.growCrop(e);
-        }
-    }
-
-    private void growCrop(BlockGrowEvent e) {
-        if (e.getBlock().getType().equals(XMaterial.WHEAT.parseMaterial())) {
-            e.setCancelled(true);
-            Crops c = new Crops(CropState.RIPE);
-            BlockState bs = e.getBlock().getState();
-            bs.setData(c);
-            bs.update();
-        }
-        Block below = e.getBlock().getLocation().subtract(0.0D, 1.0D, 0.0D).getBlock();
-        if (below.getType() == XMaterial.SUGAR_CANE.parseMaterial()) {
-            Block above = e.getBlock().getLocation().add(0.0D, 1.0D, 0.0D).getBlock();
-            if (above.getType() == Material.AIR && above.getLocation().add(0.0D, -2.0D, 0.0D).getBlock().getType() != Material.AIR)
-                above.setType(XMaterial.SUGAR_CANE.parseMaterial());
-        } else if (below.getType() == Material.CACTUS) {
-            Block above = e.getBlock().getLocation().add(0.0D, 1.0D, 0.0D).getBlock();
-            if (above.getType() == Material.AIR && above.getLocation().add(0.0D, -2.0D, 0.0D).getBlock().getType() != Material.AIR)
-                above.setType(Material.CACTUS);
-        }
-    }
-
-    @EventHandler
     public void onWaterRedstone(BlockFromToEvent e) {
         FLocation floc = FLocation.wrap(e.getToBlock().getLocation());
         Faction factionAtLoc = Board.getInstance().getFactionAt(floc);
