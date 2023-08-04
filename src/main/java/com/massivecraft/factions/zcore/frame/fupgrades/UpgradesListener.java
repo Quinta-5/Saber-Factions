@@ -39,7 +39,6 @@ import org.bukkit.scheduler.BukkitScheduler;
 
 public class UpgradesListener implements Listener {
 
-
     /**
      * @author Illyria Team, Atilt
      */
