@@ -133,30 +133,14 @@ Set<Material> shrooms = EnumSet.of(Material.RED_MUSHROOM, Material.BROWN_MUSHROO
     		Location sourceLocation =e.getSource().getLocation();
     		this.typeShroom = location.getBlock().getType();
     		if (shrooms.contains(typeShroom)== true) {
-    			if (belowMaxDensity(location) == true) {
     				Location shroomSpace = getSpaceForShroom(sourceLocation);
     				shroomSpace.getBlock().setType(typeShroom);
     			}
-    		}
+    		
     	});
     }
 	
-        private boolean belowMaxDensity(Location location) {
-            int i =5;       
-            	for (int x = 4; x >= -4; x--) {
-            		for (int y = 1; y >= -1; y--) {
-            			for (int z = 4; z >= -4; z--) { 			
-            				if (shrooms.contains(location.getBlock().getRelative(x, y, z).getType()) ) {
-            					i--;
-            					if (i<=0) {
-            						return false;
-            				}
-                        }
-                    }
-                }
-            }return true;	
-        }
-
+        
     Set<Material> mushroomGrowBlock = EnumSet.of(Material.MYCELIUM, Material.PODZOL, Material.CRIMSON_NYLIUM, Material.WARPED_NYLIUM);
 	
     private boolean canSurvive(Block e){
