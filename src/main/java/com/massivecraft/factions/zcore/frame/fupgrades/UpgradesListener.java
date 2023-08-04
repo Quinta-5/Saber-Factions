@@ -99,7 +99,207 @@ public class UpgradesListener implements Listener {
             Logger.print("Missing expected spawner at: " + spawner.getX() + ", " + spawner.getY() + ", " + spawner.getZ(), Logger.PrefixType.FAILED);
         }
     }
+    
+    Plugin plugin = FactionsPlugin.getPlugin(FactionsPlugin.class);
+    BukkitScheduler scheduler = Bukkit.getScheduler();
 
+Set<Material> shrooms = EnumSet.of(Material.RED_MUSHROOM, Material.BROWN_MUSHROOM);
+
+    @EventHandler
+    public void onBlockSpread(BlockSpreadEvent e) {
+        FLocation floc = FLocation.wrap(e.getBlock().getLocation());
+        Faction factionAtLoc = Board.getInstance().getFactionAt(floc);
+        if (!factionAtLoc.isWilderness()) {
+            int level = factionAtLoc.getUpgrade("Crops");
+            int chance = FactionsPlugin.getInstance().getFileManager().getUpgrades().getConfig().getInt("fupgrades.MainMenu.Crops.Crop-Boost.level-" + level);
+            if (level == 0 || chance == 0) {
+                return;
+            }
+            int randomNum = ThreadLocalRandom.current().nextInt(0, 100);
+            if (randomNum <= chance) {
+                this.spreadShroom(e);
+            }
+        }
+    }
+	
+    Block source;
+    Material typeShroom;
+	
+    private void spreadShroom(BlockSpreadEvent e){
+    	Logger.print("spreadShroom check 1");
+    	this.source= e.getSource();
+    	Location location = e.getBlock().getLocation();   	
+    	scheduler.runTask(plugin, () -> {
+    		Location sourceLocation =e.getSource().getLocation();
+    		this.typeShroom = location.getBlock().getType();
+    		if (shrooms.contains(typeShroom)== true) {
+    			if (belowMaxDensity(location) == true) {
+    				Location shroomSpace = getSpaceForShroom(sourceLocation);
+    				shroomSpace.getBlock().setType(typeShroom);
+    			}
+    		}
+    	});
+    }
+	
+        private boolean belowMaxDensity(Location location) {
+            int i =5;       
+            	for (int x = 4; x >= -4; x--) {
+            		for (int y = 1; y >= -1; y--) {
+            			for (int z = 4; z >= -4; z--) { 			
+            				if (shrooms.contains(location.getBlock().getRelative(x, y, z).getType()) ) {
+            					i--;
+            					if (i<=0) {
+            						return false;
+            				}
+                        }
+                    }
+                }
+            }return true;	
+        }
+
+    Set<Material> mushroomGrowBlock = EnumSet.of(Material.MYCELIUM, Material.PODZOL, Material.CRIMSON_NYLIUM, Material.WARPED_NYLIUM);
+	
+    private boolean canSurvive(Block e){
+    	Material below = e.getLocation().add(0.0, -1.0, 0.0).getBlock().getType();
+    	Material origin= e.getType();
+    	byte lightLevel =e.getLightLevel();
+    	if (origin == Material.AIR) {	
+    		if(mushroomGrowBlock.contains(below))  {
+    		return true;
+    	}else if ((lightLevel < 13)  && (below.isSolid() == true)){
+    		return true;
+    	}
+      }return false;
+    }
+
+    Location spaceForShroom;
+	
+    private Location getSpaceForShroom(Location location) {
+    	for (int x = 1; x >= -1; x--) {
+    		for (int y = 1; y >= -1; y--) {
+    			for (int z = 1; z >= -1; z--) { 
+    				if (canSurvive(location.getBlock().getRelative(x, y, z)) == true) {
+    					this.spaceForShroom = location.getBlock().getRelative(x, y, z).getLocation();
+    				}
+    			}
+    		}
+    	}return spaceForShroom;
+    }	
+	
+    @EventHandler
+    public void onCropGrow(BlockGrowEvent e) {
+        FLocation floc = FLocation.wrap(e.getBlock().getLocation());
+        Faction factionAtLoc = Board.getInstance().getFactionAt(floc);
+        if (!factionAtLoc.isWilderness()) {
+            int level = factionAtLoc.getUpgrade("Crops");
+            int chance = FactionsPlugin.getInstance().getFileManager().getUpgrades().getConfig().getInt("fupgrades.MainMenu.Crops.Crop-Boost.level-" + level);
+            if (level == 0 || chance == 0) {
+            	return;
+            }
+            int randomNum = ThreadLocalRandom.current().nextInt(0, 100);
+            if (randomNum <= chance) { 	
+            	this.growCrop(e);
+            }
+          }
+        }
+    
+    BlockGrowEvent cropGrowEvent;
+    Set<BlockFace> blockFaces = EnumSet.of(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST);
+    Set<Material> manualCrops = EnumSet.of(Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.NETHER_WART, Material.COCOA);;
+    Set<Material> autoCrops = EnumSet.of(Material.CACTUS, Material.SUGAR_CANE, Material.MELON, Material.PUMPKIN);;
+    Set<Material> autoAgeableCrops = EnumSet.of(Material.SUGAR_CANE, Material.CACTUS);
+    Set<Material> fruitCrops = EnumSet.of(Material.PUMPKIN, Material.MELON);
+    Block blockCrop;
+    Material typeCropNew;
+    BlockData dataCropNew;
+    Location locationCrop;
+    
+    private void growCrop(BlockGrowEvent e) {
+    	this.cropGrowEvent = e;
+    	this.blockCrop = cropGrowEvent.getNewState().getBlock();
+    	this.typeCropNew= cropGrowEvent.getNewState().getType();
+    	this.dataCropNew= cropGrowEvent.getNewState().getBlockData();
+    	this.locationCrop = cropGrowEvent.getNewState().getBlock().getLocation();
+    	if ((!manualCrops.contains(typeCropNew)) && (!autoCrops.contains(typeCropNew))) { 
+    		return;
+    		}else if (manualCrops.contains(typeCropNew)) {
+    			growManual(cropGrowEvent);
+    		}else if (fruitCrops.contains(typeCropNew)) {
+				growFruit(cropGrowEvent);
+    		}else if (autoAgeableCrops.contains(typeCropNew)) {
+    			growAutoAgeable(cropGrowEvent);
+    		}
+    }
+    					
+    Block blockAutoAgeable;
+    
+    private void growAutoAgeable(BlockGrowEvent cropGrowEvent) {
+    		Block above =  blockCrop.getLocation().add(0.0, 1.0, 0.0).getBlock();
+    		Material aboveType = above.getType();
+    		Material below2Type =blockCrop.getLocation().add(0.0, -2.0, 0.0).getBlock().getType();
+    		if (typeCropNew == Material.SUGAR_CANE) {
+    			if ((aboveType == Material.AIR) && (below2Type != Material.SUGAR_CANE)) {	
+    				above.setType(Material.SUGAR_CANE);
+    			}
+    		}else if (typeCropNew == Material.CACTUS) {
+    		 if (getNeighbors() == true) {
+    				blockCrop.setType(Material.CACTUS);
+    				blockCrop.breakNaturally();
+       		}else if((aboveType == Material.AIR) && (below2Type != Material.CACTUS)) {
+       			above.setType(Material.CACTUS);
+       		}
+    	}
+    }
+      		    		
+private boolean getNeighbors() {
+	for (BlockFace blockface : blockFaces)
+			if (blockCrop.getRelative(blockface).getType() != Material.AIR) {
+				return true;	
+			} return false; 		
+	}
+
+    private void growManual(BlockGrowEvent cropGrowEvent) {
+    	cropGrowEvent.setCancelled(true);
+    	 int age =((Ageable) dataCropNew).getAge();
+    	 int maxAge =((Ageable) dataCropNew).getMaximumAge();
+    	 int newAge =Math.min(age + 1, maxAge);
+    	 ((Ageable)dataCropNew).setAge(newAge);
+    	 blockCrop.setBlockData((BlockData)(Ageable)dataCropNew);   	 
+    	}
+    
+    private Set<Material> fruitSpawnable = EnumSet.of(Material.DIRT, Material.GRASS_BLOCK, Material.PODZOL, Material.COARSE_DIRT, Material.MYCELIUM, Material.ROOTED_DIRT, Material.MOSS_BLOCK, Material.FARMLAND);
+    private Material typeAttachedStem;
+    
+    private void growFruit(BlockGrowEvent cropGrowEvent) {
+    	scheduler.runTask(plugin, () -> {
+    		 if (typeCropNew == Material.PUMPKIN) {
+        		this.typeAttachedStem = Material.ATTACHED_PUMPKIN_STEM;      		
+        	} else if (typeCropNew == Material.MELON) {
+        		this.typeAttachedStem = Material.ATTACHED_MELON_STEM;	
+        	} growExtraFruit();
+    	});
+      }	
+    
+    Block blockStemAttached;
+    
+    private Block getAttachedStem() {
+    	for (BlockFace blockface : blockFaces)
+    			if ((typeAttachedStem == blockCrop.getRelative(blockface).getType()) 
+    					&& ((((Directional) (blockCrop.getRelative(blockface)).getBlockData()).getFacing() == blockface.getOppositeFace()))) {
+    					this.blockStemAttached = blockCrop.getRelative(blockface);		
+    			} return blockStemAttached; 		
+    	}
+
+    private void growExtraFruit() {
+    	Block blockAttachedStem = getAttachedStem();
+    	for (BlockFace blockface : blockFaces)
+    			if (fruitSpawnable.contains(blockAttachedStem.getRelative(blockface).getLocation().add(0.0, -1.0, 0.0).getBlock().getType())
+    	    			&& ((blockAttachedStem.getRelative(blockface).getType()) == (Material.AIR))) {
+    					blockAttachedStem.getRelative(blockface).setType(typeCropNew);
+    					return;
+    			} 		
+    	}
+      
     @EventHandler
     public void onWaterRedstone(BlockFromToEvent e) {
         FLocation floc = FLocation.wrap(e.getToBlock().getLocation());
