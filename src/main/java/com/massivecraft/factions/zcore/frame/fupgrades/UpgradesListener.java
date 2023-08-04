@@ -73,8 +73,7 @@ public class UpgradesListener implements Listener {
         double newExp = e.getDroppedExp() * multiplier;
         e.setDroppedExp((int) newExp);
     }
-
-    @EventHandler
+    @EventHandler 
     public void onSpawn(SpawnerSpawnEvent e) {
         FLocation floc = FLocation.wrap(e.getLocation());
         Faction factionAtLoc = Board.getInstance().getFactionAt(floc);
