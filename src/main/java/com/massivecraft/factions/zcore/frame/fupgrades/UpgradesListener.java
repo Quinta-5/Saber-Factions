@@ -105,22 +105,30 @@ public class UpgradesListener implements Listener {
 
 Set<Material> shrooms = EnumSet.of(Material.RED_MUSHROOM, Material.BROWN_MUSHROOM);
 
-    @EventHandler
-    public void onBlockSpread(BlockSpreadEvent e) {
-        FLocation floc = FLocation.wrap(e.getBlock().getLocation());
-        Faction factionAtLoc = Board.getInstance().getFactionAt(floc);
-        if (!factionAtLoc.isWilderness()) {
-            int level = factionAtLoc.getUpgrade("Crops");
-            int chance = FactionsPlugin.getInstance().getFileManager().getUpgrades().getConfig().getInt("fupgrades.MainMenu.Crops.Crop-Boost.level-" + level);
-            if (level == 0 || chance == 0) {
-                return;
-            }
-            int randomNum = ThreadLocalRandom.current().nextInt(0, 100);
-            if (randomNum <= chance) {
-                this.spreadShroom(e);
-            }
+@EventHandler
+public void onBlockSpread(BlockSpreadEvent e) {
+	Location location = e.getSource().getLocation();
+	if (willActivate(location)) {
+            this.spreadShroom(e);
         }
     }
+	
+private boolean willActivate(Location e) {
+	FLocation floc = FLocation.wrap(e);
+    Faction factionAtLoc = Board.getInstance().getFactionAt(floc);
+    if (!factionAtLoc.isWilderness()) {
+        int level = factionAtLoc.getUpgrade("Crops");
+        int chance = FactionsPlugin.getInstance().getFileManager().getUpgrades().getConfig().getInt("fupgrades.MainMenu.Crops.Crop-Boost.level-" + level);
+        if (level == 0 || chance == 0) {  
+        	return false;
+        }
+        int randomNum = ThreadLocalRandom.current().nextInt(0, 100);
+        if (randomNum <= chance) {
+        	return true;
+        }
+     } return false;
+}
+
 	
     Block source;
     Material typeShroom;
@@ -170,22 +178,13 @@ Set<Material> shrooms = EnumSet.of(Material.RED_MUSHROOM, Material.BROWN_MUSHROO
     	}return spaceForShroom;
     }	
 	
-    @EventHandler
+@EventHandler
     public void onCropGrow(BlockGrowEvent e) {
-        FLocation floc = FLocation.wrap(e.getBlock().getLocation());
-        Faction factionAtLoc = Board.getInstance().getFactionAt(floc);
-        if (!factionAtLoc.isWilderness()) {
-            int level = factionAtLoc.getUpgrade("Crops");
-            int chance = FactionsPlugin.getInstance().getFileManager().getUpgrades().getConfig().getInt("fupgrades.MainMenu.Crops.Crop-Boost.level-" + level);
-            if (level == 0 || chance == 0) {
-            	return;
-            }
-            int randomNum = ThreadLocalRandom.current().nextInt(0, 100);
-            if (randomNum <= chance) { 	
+    	Location location = e.getBlock().getLocation();
+    	if (willActivate(location)) {
             	this.growCrop(e);
             }
           }
-        }
     
     BlockGrowEvent cropGrowEvent;
     Set<BlockFace> blockFaces = EnumSet.of(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST);
