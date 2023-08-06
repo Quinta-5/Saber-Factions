@@ -59,7 +59,7 @@ public class UpgradesListener implements Listener {
 
     @EventHandler
     public void onDeath(EntityDeathEvent e) {
-       Entity killer = e.getEntity().getKiller();
+        Entity killer = e.getEntity().getKiller();
         if (!(killer instanceof Player)) return;
 
         FLocation floc = FLocation.wrap(e.getEntity().getLocation());
