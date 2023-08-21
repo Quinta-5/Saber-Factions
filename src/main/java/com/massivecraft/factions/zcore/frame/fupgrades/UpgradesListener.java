@@ -50,7 +50,6 @@ public class UpgradesListener implements Listener {
     private final Set<BlockFace> BlockFaces = EnumSet.of(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST);
     private Set<Material> Shrooms, ShroomGrowBlocks, Crops, ManualCrops, AutoAgeableCrops, FruitCrops, FruitSpawnable;
 
-
     public void init() {
         Plugin wildStacker = Bukkit.getPluginManager().getPlugin("WildStacker");
         if (wildStacker != null) {
