@@ -47,15 +47,9 @@ public class UpgradesListener implements Listener {
     private RoseStackerProvider roseStackerProvider;
     private final Plugin plugin = FactionsPlugin.getPlugin(FactionsPlugin.class);
     private final BukkitScheduler scheduler = Bukkit.getScheduler();
-    private Material typeSourceBelow;
-    private Material typeShroom;
-    private Location locationExtraShroom;
     private final Set<BlockFace> BlockFaces = EnumSet.of(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST);
-    private Block blockCrop;
-    private Material typeCropNew;
-    private BlockData dataCropNew;
-    private Material typeAttachedStem;
-    private Block blockStemAttached;
+    private Set<Material> Shrooms, ShroomGrowBlocks, Crops, ManualCrops, AutoAgeableCrops, FruitCrops, FruitSpawnable;
+
 
     public void init() {
         Plugin wildStacker = Bukkit.getPluginManager().getPlugin("WildStacker");
@@ -114,7 +108,6 @@ public class UpgradesListener implements Listener {
     @EventHandler
     public void onBlockSpread(BlockSpreadEvent e) {
         Location locationSource = e.getSource().getLocation();
-        this.typeSourceBelow = e.getSource().getLocation().add(0.0, -1.0, 0.0).getBlock().getType();
         if (willActivate(locationSource)) {
             this.spreadShroom(e);
         }
@@ -135,26 +128,32 @@ public class UpgradesListener implements Listener {
         return false;
     }
 
-    private void spreadShroom(BlockSpreadEvent e){
-        Set<Material> Shrooms = EnumSet.of(Material.RED_MUSHROOM, Material.BROWN_MUSHROOM);
+    private void spreadShroom(BlockSpreadEvent e) {
+        if (this.Shrooms == null) {
+            this.Shrooms = EnumSet.of(Material.RED_MUSHROOM, Material.BROWN_MUSHROOM);
+        }
         Location location = e.getBlock().getLocation();
         scheduler.runTask(plugin, () -> {
-            Location sourceLocation =e.getSource().getLocation();
-            this.typeShroom = location.getBlock().getType();
-            if (Shrooms.contains(typeShroom)) {
-                this.locationExtraShroom = getExtraShroomLocation(sourceLocation);
-                locationExtraShroom.getBlock().setType(typeShroom);
+            Location sourceLocation = e.getSource().getLocation();
+            Material typeShroom = location.getBlock().getType();
+            if (this.Shrooms.contains(typeShroom)) {
+                Location locationExtraShroom = getExtraShroomLocation(sourceLocation);
+                if (locationExtraShroom != null) {
+                    locationExtraShroom.getBlock().setType(typeShroom);
+                }
             }
         });
     }
 
-    private boolean canSurvive(Block e){
+    private boolean canSurvive(Block e, Material typeSourceBelow){
+        if (this.ShroomGrowBlocks == null) {
+            this.ShroomGrowBlocks = EnumSet.of(Material.MYCELIUM, Material.PODZOL, Material.CRIMSON_NYLIUM, Material.WARPED_NYLIUM);
+        }
         Material below = e.getLocation().add(0.0, -1.0, 0.0).getBlock().getType();
-        Material origin= e.getType();
-        byte lightLevel =e.getLightLevel();
-        Set<Material> MushroomGrowBlock = EnumSet.of(Material.MYCELIUM, Material.PODZOL, Material.CRIMSON_NYLIUM, Material.WARPED_NYLIUM);
+        Material origin = e.getType();
+        byte lightLevel = e.getLightLevel();
         if (origin == Material.AIR) {
-            if ((MushroomGrowBlock.contains(typeSourceBelow)) && (below.isSolid()))  {
+            if ((this.ShroomGrowBlocks.contains(typeSourceBelow)) && (below.isSolid()))  {
                 return true;
             } else return (lightLevel < 13) && (below.isSolid());
         }
@@ -162,55 +161,60 @@ public class UpgradesListener implements Listener {
     }
 
     private Location getExtraShroomLocation(Location location) {
+        Material typeSourceBelow = location.add(0.0, -1.0, 0.0).getBlock().getType();
+        Block b;
         for (int x = 1; x >= -1; x--) {
             for (int y = 1; y >= -1; y--) {
                 for (int z = 1; z >= -1; z--) {
-                    if (canSurvive(location.getBlock().getRelative(x, y, z))) {
-                        this.locationExtraShroom = location.getBlock().getRelative(x, y, z).getLocation();
+                    b = location.getBlock().getRelative(x, y, z);
+                    if (canSurvive(b, typeSourceBelow)) {
+                        return b.getLocation();
                     }
                 }
             }
         }
-        return locationExtraShroom;
+        return null;
     }
 
     @EventHandler
     public void onCropGrow(BlockGrowEvent e) {
         Location location = e.getBlock().getLocation();
         if (willActivate(location)) {
-            this.growCrop(e);
+            growCrop(e);
         }
     }
 
     private void growCrop(BlockGrowEvent e) {
-        Set<Material> ManualCrops = EnumSet.of(Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.NETHER_WART, Material.COCOA);
-        Set<Material> AllCrops = EnumSet.of(Material.CACTUS, Material.SUGAR_CANE, Material.MELON, Material.PUMPKIN, Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.NETHER_WART, Material.COCOA);
-        Set<Material> AutoAgeableCrops = EnumSet.of(Material.SUGAR_CANE, Material.CACTUS);
-        Set<Material> FruitCrops = EnumSet.of(Material.PUMPKIN, Material.MELON);
-        this.blockCrop = e.getNewState().getBlock();
-        this.typeCropNew= e.getNewState().getType();
-        this.dataCropNew= e.getNewState().getBlockData();
-        if (AllCrops.contains(typeCropNew)) {
+        if (Crops == null) {
+            Crops = EnumSet.of(Material.CACTUS, Material.SUGAR_CANE, Material.MELON, Material.PUMPKIN, Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.NETHER_WART, Material.COCOA);
+            ManualCrops = EnumSet.of(Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.NETHER_WART, Material.COCOA);
+            AutoAgeableCrops = EnumSet.of(Material.SUGAR_CANE, Material.CACTUS);
+            FruitCrops = EnumSet.of(Material.PUMPKIN, Material.MELON);
+        }
+        Block blockCrop = e.getNewState().getBlock();
+        Material typeCropNew = e.getNewState().getType();
+        BlockData dataCropNew = e.getNewState().getBlockData();
+        if (Crops.contains(typeCropNew)) {
             if (ManualCrops.contains(typeCropNew)) {
-                growManual(e);
+                growManual(e, blockCrop, dataCropNew);
             } else if (FruitCrops.contains(typeCropNew)) {
-                growFruit();
+                growFruit(blockCrop, typeCropNew);
             } else if (AutoAgeableCrops.contains(typeCropNew)) {
-                growAutoAgeable();
+                growAutoAgeable(blockCrop, typeCropNew);
             }
         }
     }
 
-    private void growAutoAgeable() {
-        Block above =  blockCrop.getLocation().add(0.0, 1.0, 0.0).getBlock();
+    private void growAutoAgeable(Block blockCrop, Material typeCropNew) {
+        Block above = blockCrop.getLocation().add(0.0, 1.0, 0.0).getBlock();
         Material aboveType = above.getType();
-        Material below2Type =blockCrop.getLocation().add(0.0, -2.0, 0.0).getBlock().getType();
+        Material below2Type = blockCrop.getLocation().add(0.0, -2.0, 0.0).getBlock().getType();
         if (typeCropNew == Material.SUGAR_CANE) {
             if ((aboveType == Material.AIR) && (below2Type != Material.SUGAR_CANE)) {
                 above.setType(Material.SUGAR_CANE);
             }
         } else if (typeCropNew == Material.CACTUS) {
-            if (hasNeighbors()) {
+            if (hasNeighbors(blockCrop)) {
                 blockCrop.setType(Material.CACTUS);
                 blockCrop.breakNaturally();
             } else if ((aboveType == Material.AIR) && (below2Type != Material.CACTUS)) {
@@ -219,46 +223,49 @@ public class UpgradesListener implements Listener {
         }
     }
 
-    private boolean hasNeighbors() {
-        for (BlockFace blockface : BlockFaces)
+    private boolean hasNeighbors(Block blockCrop) {
+        for (BlockFace blockface : BlockFaces) {
             if (blockCrop.getRelative(blockface).getType() != Material.AIR) {
                 return true;
             }
+        }
         return false;
     }
 
-    private void growManual(BlockGrowEvent e) {
+    private void growManual(BlockGrowEvent e, Block blockCrop, BlockData dataCropNew) {
         e.setCancelled(true);
-        int age =((Ageable) dataCropNew).getAge();
-        int maxAge =((Ageable) dataCropNew).getMaximumAge();
-        int newAge =Math.min(age + 1, maxAge);
-        ((Ageable)dataCropNew).setAge(newAge);
+        int age = ((Ageable) dataCropNew).getAge();
+        int maxAge = ((Ageable) dataCropNew).getMaximumAge();
+        int newAge = Math.min(age + 1, maxAge);
+        ((Ageable) dataCropNew).setAge(newAge);
         blockCrop.setBlockData(dataCropNew);
     }
 
-    private void growFruit() {
+    private void growFruit(Block blockCrop, Material typeCropNew) {
         scheduler.runTask(plugin, () -> {
             if (typeCropNew == Material.PUMPKIN) {
-                this.typeAttachedStem = Material.ATTACHED_PUMPKIN_STEM;
+                growExtraFruit(blockCrop, typeCropNew, Material.ATTACHED_PUMPKIN_STEM);
             } else if (typeCropNew == Material.MELON) {
-                this.typeAttachedStem = Material.ATTACHED_MELON_STEM;
-            } growExtraFruit();
+                growExtraFruit(blockCrop, typeCropNew, Material.ATTACHED_MELON_STEM);
+            }
         });
     }
 
-    private Block getAttachedStem() {
+    private Block getAttachedStem(Block blockCrop, Material typeAttachedStem) {
         for (BlockFace blockface : BlockFaces)
             if ((typeAttachedStem == blockCrop.getRelative(blockface).getType()) && ((((Directional) (blockCrop.getRelative(blockface)).getBlockData()).getFacing() == blockface.getOppositeFace()))) {
-                this.blockStemAttached = blockCrop.getRelative(blockface);
+                return blockCrop.getRelative(blockface);
             }
-        return blockStemAttached;
+        return null;
     }
 
-    private void growExtraFruit() {
-        Block blockAttachedStem = getAttachedStem();
-        Set<Material> fruitSpawnable = EnumSet.of(Material.DIRT, Material.GRASS_BLOCK, Material.PODZOL, Material.COARSE_DIRT, Material.MYCELIUM, Material.ROOTED_DIRT, Material.MOSS_BLOCK, Material.FARMLAND);
+    private void growExtraFruit(Block blockCrop, Material typeCropNew, Material typeAttachedStem) {
+        Block blockAttachedStem = getAttachedStem(blockCrop, typeAttachedStem);
+        if (FruitSpawnable == null) {
+            FruitSpawnable = EnumSet.of(Material.DIRT, Material.GRASS_BLOCK, Material.PODZOL, Material.COARSE_DIRT, Material.MYCELIUM, Material.ROOTED_DIRT, Material.MOSS_BLOCK, Material.FARMLAND);
+        }
         for (BlockFace blockface : BlockFaces) {
-            if (fruitSpawnable.contains(blockAttachedStem.getRelative(blockface).getLocation().add(0.0, -1.0, 0.0).getBlock().getType()) && ((blockAttachedStem.getRelative(blockface).getType()) == (Material.AIR))) {
+            if (FruitSpawnable.contains(blockAttachedStem.getRelative(blockface).getLocation().add(0.0, -1.0, 0.0).getBlock().getType()) && ((blockAttachedStem.getRelative(blockface).getType()) == (Material.AIR))) {
                 blockAttachedStem.getRelative(blockface).setType(typeCropNew);
                 return;
             }
